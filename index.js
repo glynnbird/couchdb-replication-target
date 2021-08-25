@@ -9,7 +9,9 @@ const path = require('path')
 const CWD = process.cwd()
 
 // constants
-const PORT = 8080
+const LOCAL = 'local'
+const DOCS = 'docs'
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8080
 const HOST = '0.0.0.0' // listen on all network interfaces
 
 // the express app with:
@@ -18,15 +20,17 @@ const app = express()
 app.use(bodyParser.json({ limit: '50MB' }))
 app.use(morgan('combined'))
 
+// make local database structure
 const makeDirectory = (db) => {
   try {
     fs.mkdirSync(path.join(CWD, db))
-    fs.mkdirSync(path.join(CWD, db, 'local'))
-    fs.mkdirSync(path.join(CWD, db, 'docs'))
+    fs.mkdirSync(path.join(CWD, db, LOCAL))
+    fs.mkdirSync(path.join(CWD, db, DOCS))
   } catch {
   }
 }
 
+// PUT /db/_local/id - put local checkpoint
 app.put('/:db/_local/:id', async (req, res) => {
   const db = req.params.db
   const id = req.params.id
@@ -40,6 +44,7 @@ app.put('/:db/_local/:id', async (req, res) => {
   res.status(201).send(retval)
 })
 
+// GET /db/_local/id - get local checkpoint
 app.get('/:db/_local/:id', async (req, res) => {
   const db = req.params.db
   const id = req.params.id
@@ -55,6 +60,7 @@ app.get('/:db/_local/:id', async (req, res) => {
   }
 })
 
+// GET / - get top-level "are you there?"
 app.get('/', async (req, res) => {
   res.send({
     couchdb: 'Welcome',
@@ -62,6 +68,7 @@ app.get('/', async (req, res) => {
   })
 })
 
+// GET /db - get gb meta data
 app.get('/:db', async (req, res) => {
   const db = req.params.db
   makeDirectory(db)
@@ -89,6 +96,7 @@ app.get('/:db', async (req, res) => {
   })
 })
 
+// POST /db/_revs_diff - yes we need those changes
 app.post('/:db/_revs_diff', async (req, res) => {
   const body = req.body
   const retval = {}
@@ -99,6 +107,7 @@ app.post('/:db/_revs_diff', async (req, res) => {
   res.send(retval)
 })
 
+// POST /db/_bulk_docs - receive bulk writes
 app.post('/:db/_bulk_docs', async (req, res) => {
   const db = req.params.db
   const body = req.body
@@ -115,11 +124,12 @@ app.post('/:db/_bulk_docs', async (req, res) => {
   }
   makeDirectory(db)
   const ts = new Date().getTime()
-  const p = path.join(CWD, db, 'docs', ts + '.json')
+  const p = path.join(CWD, db, DOCS, ts + '.json')
   fs.writeFileSync(p, JSON.stringify(body))
   res.status(201).send(retval)
 })
 
+// POST /db/_ensure_full_commit - NOP
 app.post('/:db/_ensure_full_commit', async (req, res) => {
   const retval = {
     ok: true,
@@ -128,51 +138,7 @@ app.post('/:db/_ensure_full_commit', async (req, res) => {
   res.status(201).send(retval)
 })
 
-/*
-app.post('/flush', async (req, res) => {
-  await redisFlush()
-  console.log('cache is flushed!')
-  res.send({ ok: true })
-}),
-
-// respond to POST requests to the /team endpoint
-app.post('/team', async (req, res) => {
-  // extract the chosen team from the POSted body
-  const team = req.body.team
-  console.log(team)
-  console.log(req.body)
-  let retval
-  let cache = false
-
-  // first check the cache
-  retval = await redisGet(team)
-  if (retval) {
-    console.log('Got from cache')
-    retval = JSON.parse(retval)
-    cache = true
-  } else {
-    //  retrieve from Cloudant using a MapReduce view
-    console.log('fetching from Cloudant')
-    retval = await client.postView({
-      db: DBNAME,
-      ddoc: DESIGN_DOC,
-      view: 'test',
-      key: team,
-      includeDocs: true,
-      reduce: false,
-      limit: 10
-    })
-    // save to the cache
-    await redisSet(team, 60, JSON.stringify(retval))
-  }
-  console.log('size:', retval.result.rows.length)
-  res.send({
- data: retval,
-    cache: cache
- })
-})
-*/
-
+// 404 everything else
 app.use(async (req, res) => {
   res.status(404).send({})
 })
