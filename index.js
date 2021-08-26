@@ -15,7 +15,8 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8080
 const HOST = '0.0.0.0' // listen on all network interfaces
 
 // the express app with:
-// - the HTTP body parsing middleware to handling POSTed HTTP bodies
+// bodyParser - the HTTP body parsing middleware to handling POSTed HTTP bodies
+// morgan - logging
 const app = express()
 app.use(bodyParser.json({ limit: '50MB' }))
 app.use(morgan('combined'))
@@ -102,6 +103,9 @@ app.post('/:db/_revs_diff', async (req, res) => {
   const retval = {}
   for (const k in body) {
     const v = body[k]
+    // we are saying "yes we need all of the changes".
+    // we could do missing: [v[v.length - 1]] to only ask
+    // for the last change?
     retval[k] = { missing: v, possible_ancestors: [] }
   }
   res.send(retval)
@@ -110,23 +114,15 @@ app.post('/:db/_revs_diff', async (req, res) => {
 // POST /db/_bulk_docs - receive bulk writes
 app.post('/:db/_bulk_docs', async (req, res) => {
   const db = req.params.db
-  const body = req.body
-  const retval = []
-
-  for (const k in body.docs) {
-    const doc = body.docs[k]
-    const obj = {
-      ok: true,
-      id: doc._id,
-      rev: doc._rev
-    }
-    retval.push(obj)
-  }
+  const docs = req.body.docs.map(function (d) {
+    delete d._revisions
+    return d
+  })
   makeDirectory(db)
   const ts = new Date().getTime()
   const p = path.join(CWD, db, DOCS, ts + '.json')
-  fs.writeFileSync(p, JSON.stringify(body))
-  res.status(201).send(retval)
+  fs.writeFileSync(p, JSON.stringify(docs))
+  res.status(201).send([])
 })
 
 // POST /db/_ensure_full_commit - NOP
