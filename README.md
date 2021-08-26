@@ -7,6 +7,8 @@ CWD/<dbname>/local/... // checkpoints go here
 CWD/<dbname>/docs/...  // bulk inserts go here
 ```
 
+Each of the files in the `docs` folder contains an array of documents that were written in bulk by the replicator.
+
 ## Installation
 
 Clone this repo then:
@@ -15,6 +17,16 @@ Clone this repo then:
 npm install
 npm run start
 ```
+
+## Configuration
+
+Environment variables can be used to configure the app's runtime behaviour:
+
+- `PORT` - the port on which the app will listen. Default `8080`
+- `AUTH_USERNAME` - the username used to authenticate incoming requests. Default `undefined`
+- `AUTH_PASSWORD` - the password used to authenticate incoming requests. Default `undefined`
+
+> Both `AUTH_USERNAME` & `AUTH_PASSWORD` must be supplied to enable basic authentication.
 
 ## Replication
 

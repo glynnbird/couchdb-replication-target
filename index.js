@@ -3,6 +3,7 @@
 // & Morgan - a logging package
 const express = require('express')
 const bodyParser = require('body-parser')
+const basicAuth = require('express-basic-auth')
 const morgan = require('morgan')
 const fs = require('fs')
 const path = require('path')
@@ -13,6 +14,8 @@ const LOCAL = 'local'
 const DOCS = 'docs'
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8080
 const HOST = '0.0.0.0' // listen on all network interfaces
+const AUTH_USERNAME = process.env.AUTH_USERNAME
+const AUTH_PASSWORD = process.env.AUTH_PASSWORD
 
 // the express app with:
 // bodyParser - the HTTP body parsing middleware to handling POSTed HTTP bodies
@@ -20,6 +23,15 @@ const HOST = '0.0.0.0' // listen on all network interfaces
 const app = express()
 app.use(bodyParser.json({ limit: '50MB' }))
 app.use(morgan('combined'))
+
+// authentication
+if (AUTH_USERNAME && AUTH_PASSWORD) {
+  console.log('Basic-Auth enabled')
+  const users = {}
+  users[AUTH_USERNAME] = AUTH_PASSWORD
+  console.log(users)
+  app.use(basicAuth({ users: users }))
+}
 
 // make local database structure
 const makeDirectory = (db) => {
